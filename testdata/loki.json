@@ -1,0 +1,146 @@
+{
+ "status": "success",
+ "data": {
+  "resultType": "streams",
+  "result": [
+   {
+    "stream": {
+     "namespace": "monitoring",
+     "pod": "loki-0",
+     "container": "loki",
+     "level": "warn"
+    },
+    "values": [
+     [
+      "1792303920000000000",
+      "level=warn ts=2026-10-18T06:12:01.123Z caller=retention.go:120 msg=\"retention loop slow\" took=12.3s"
+     ],
+     [
+      "1792307520000000000",
+      "level=warn ts=2026-10-18T07:12:00.004Z caller=retention.go:120 msg=\"retention loop slow\" took=9.1s"
+     ],
+     [
+      "1792311120000000000",
+      "level=warn ts=2026-10-18T08:12:00.871Z caller=retention.go:120 msg=\"retention loop slow\" took=15s"
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "namespace": "flashcard",
+     "pod": "web-7d9f8b6c5-x7k2p",
+     "container": "web",
+     "level": "error"
+    },
+    "values": [
+     [
+      "1792308900000000000",
+      "ERROR:    connection to postgres://app:FIXTURE-pg-pass@pg-rw.databases:5432/flashcard failed: timeout expired"
+     ],
+     [
+      "1792308960000000000",
+      "ERROR:    connection to postgres://app:FIXTURE-pg-pass@pg-rw.databases:5432/flashcard failed: timeout expired"
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "namespace": "nextcloud",
+     "pod": "nextcloud-6c8d7f9b4-q2w8z",
+     "container": "nextcloud",
+     "level": "warn"
+    },
+    "values": [
+     [
+      "1792305000000000000",
+      "[Sat Oct 18 06:30:00.123456 2026] [php:warn] [pid 77] [client 10.42.1.5:51234] PHP Warning: login failed for alice@example.com password=hunter2-FIXTURE"
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "namespace": "cloudflared",
+     "pod": "cloudflared-5f6d8c7b9-m4n5p",
+     "container": "cloudflared",
+     "level": "error"
+    },
+    "values": [
+     [
+      "1792306800000000000",
+      "2026-10-18T07:00:00Z ERR Failed to dial a quic connection error=\"timeout: no recent network activity\" connIndex=1 event=0 ip=198.41.200.13"
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "namespace": "longhorn-system",
+     "pod": "longhorn-manager-x7k2p",
+     "container": "longhorn-manager",
+     "level": "warn"
+    },
+    "values": [
+     [
+      "1792310400000000000",
+      "time=\"2026-10-18T08:00:00Z\" level=warning msg=\"Failed to sync volume pvc-0d3f2a64-9b1c-4d6e-8f00-123456789abc\" func=controller.(*VolumeController).syncVolume"
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "namespace": "kube-system",
+     "pod": "kube-apiserver-rke2-server-02",
+     "container": "kube-apiserver",
+     "level": "warn"
+    },
+    "values": [
+     [
+      "1792316460000000000",
+      "W1018 09:41:22.115000       1 dispatcher.go:217] Failed calling webhook, failing open longhorn: Authorization: Bearer FIXTURE-bearer-0123456789 rejected"
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "job": "journal",
+     "node": "rke2-worker-01",
+     "unit": "garage.service",
+     "level": "warn"
+    },
+    "values": [
+     [
+      "1792305900000000000",
+      "2026-10-18T06:45:00.000000Z  WARN garage_api::generic_server: Response: error 403 Forbidden, Forbidden: No such key: AKIAIOSFODNN7EXAMPLE"
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "job": "journal",
+     "node": "rke2-server-02",
+     "unit": "rke2-server.service",
+     "level": "warn"
+    },
+    "values": [
+     [
+      "1792318200000000000",
+      "time=\"2026-10-18T10:10:10Z\" level=warning msg=\"Proxy error: write failed: io: read/write on closed pipe\""
+     ]
+    ]
+   },
+   {
+    "stream": {
+     "job": "journal",
+     "node": "rke2-agent-01",
+     "unit": "kernel",
+     "level": "critical"
+    },
+    "values": [
+     [
+      "1792321200000000000",
+      "Out of memory: Killed process 4242 (python3) total-vm:2048000kB, anon-rss:1024000kB"
+     ]
+    ]
+   }
+  ]
+ }
+}

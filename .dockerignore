@@ -1,0 +1,4 @@
+.git
+.github
+*.md
+!cmd/log-digest/system.md
