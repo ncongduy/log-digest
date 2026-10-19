@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,8 @@ import (
 
 const fixture = "../../testdata/loki.json"
 
-// 12:30 UTC: the window is 06:00–12:00, which the fixture fills.
+// 12:30 UTC. The fixture fills 06:00–12:00, so the --input tests pass
+// --window 6h.
 var now = time.Date(2026, 10, 18, 12, 30, 0, 0, time.UTC)
 
 func fixtureSecrets(t *testing.T) []string {
@@ -77,7 +79,7 @@ func fakeSlack(t *testing.T) (*httptest.Server, *[]string) {
 
 func TestDryRun(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"--dry-run", "--input", fixture}, &stdout, &stderr, now)
+	code := run(context.Background(), []string{"--dry-run", "--input", fixture, "--window", "6h"}, &stdout, &stderr, now)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
@@ -105,7 +107,7 @@ func TestRunPostsReport(t *testing.T) {
 	t.Setenv("DIGEST_CONTEXT", "RKE2 homelab, four nodes.")
 
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"--input", fixture, "--claude-bin", bin}, &stdout, &stderr, now)
+	code := run(context.Background(), []string{"--input", fixture, "--window", "6h", "--claude-bin", bin}, &stdout, &stderr, now)
 	if code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
@@ -147,7 +149,7 @@ func TestRunFallsBackWhenClaudeFails(t *testing.T) {
 	t.Setenv("SLACK_WEBHOOK_URL", srv.URL)
 
 	var stdout, stderr bytes.Buffer
-	code := run(context.Background(), []string{"--input", fixture, "--claude-bin", bin}, &stdout, &stderr, now)
+	code := run(context.Background(), []string{"--input", fixture, "--window", "6h", "--claude-bin", bin}, &stdout, &stderr, now)
 	if code != 0 {
 		t.Fatalf("exit %d, want 0: the fallback post is the signal", code)
 	}
@@ -181,6 +183,39 @@ func TestRunQuietWindow(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
 	if len(*posts) != 1 || !strings.Contains((*posts)[0], "No WARN or worse lines") {
+		t.Errorf("posts = %q", *posts)
+	}
+}
+
+func TestRunWindowEndsAtTheMinute(t *testing.T) {
+	srv, posts := fakeSlack(t)
+	var queries []url.Values
+	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		queries = append(queries, r.URL.Query())
+		io.WriteString(w, `{"status":"success","data":{"resultType":"streams","result":[]}}`)
+	}))
+	defer loki.Close()
+	t.Setenv("SLACK_WEBHOOK_URL", srv.URL)
+	t.Setenv("WINDOW", "")
+
+	// Run by hand at 12:30:45, the default window is 12:20–12:30.
+	at := time.Date(2026, 10, 18, 12, 30, 45, 0, time.UTC)
+	var stdout, stderr bytes.Buffer
+	code := run(context.Background(), []string{"--loki-url", loki.URL}, &stdout, &stderr, at)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	wantStart := fmt.Sprint(time.Date(2026, 10, 18, 12, 20, 0, 0, time.UTC).UnixNano())
+	wantEnd := fmt.Sprint(time.Date(2026, 10, 18, 12, 30, 0, 0, time.UTC).UnixNano())
+	if len(queries) == 0 {
+		t.Fatal("Loki was not queried")
+	}
+	for _, q := range queries {
+		if q.Get("start") != wantStart || q.Get("end") != wantEnd {
+			t.Errorf("query %q: start=%s end=%s, want %s and %s", q.Get("query"), q.Get("start"), q.Get("end"), wantStart, wantEnd)
+		}
+	}
+	if len(*posts) != 1 || !strings.Contains((*posts)[0], "2026-10-18 12:20 – 12:30 UTC (10m)") {
 		t.Errorf("posts = %q", *posts)
 	}
 }

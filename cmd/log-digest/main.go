@@ -75,9 +75,9 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, now time.
 		return 0
 	}
 
-	// The window ends on the hour the CronJob fired at, so consecutive runs
-	// cover consecutive windows even when a run starts late.
-	end := now.UTC().Truncate(time.Hour)
+	// The window ends at the minute the run started: a run started by hand
+	// right after a change reads the last WINDOW of lines, up to now.
+	end := now.UTC().Truncate(time.Minute)
 	start := end.Add(-cfg.window)
 
 	var entries []digest.Entry
@@ -152,7 +152,7 @@ func parse(args []string, stderr io.Writer) (*config, error) {
 	fs.SetOutput(stderr)
 	cfg := &config{}
 	fs.StringVar(&cfg.lokiURL, "loki-url", env("LOKI_URL", "http://loki.monitoring.svc.cluster.local:3100"), "Loki base URL (LOKI_URL)")
-	fs.DurationVar(&cfg.window, "window", envDuration("WINDOW", 6*time.Hour), "how far back to read (WINDOW)")
+	fs.DurationVar(&cfg.window, "window", envDuration("WINDOW", 10*time.Minute), "how far back to read (WINDOW)")
 	fs.IntVar(&cfg.maxLines, "max-lines", envInt("MAX_LINES", 50_000), "most lines to read from Loki (MAX_LINES)")
 	fs.IntVar(&cfg.budget, "prompt-budget", envInt("PROMPT_BUDGET", 60_000), "most bytes of digest sent to Claude (PROMPT_BUDGET)")
 	fs.StringVar(&cfg.claudeBin, "claude-bin", env("CLAUDE_BIN", "claude"), "Claude Code CLI (CLAUDE_BIN)")

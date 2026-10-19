@@ -1,8 +1,9 @@
 # log-digest
 
-Every 6 hours, a Kubernetes CronJob reads the window's WARN-and-worse log lines
-from Loki, redacts secrets, has Claude analyse them through the Claude Code CLI,
-and posts the report to Slack. Deployed by
+It reads the last 10 minutes' WARN-and-worse log lines from Loki, redacts
+secrets, has Claude analyse them through the Claude Code CLI, and posts the
+report to Slack. It runs when started by hand, as a Job created from a
+suspended Kubernetes CronJob. Deployed by
 [k8s-homelab](https://github.com/ncongduy/k8s-homelab), `infra/monitoring/`
 §14.
 
@@ -29,7 +30,7 @@ The Slack webhook is removed from `claude`'s environment.
 | Env | Flag | Default | |
 |---|---|---|---|
 | `LOKI_URL` | `--loki-url` | `http://loki.monitoring.svc.cluster.local:3100` | |
-| `WINDOW` | `--window` | `6h` | ends at the current hour, UTC |
+| `WINDOW` | `--window` | `10m` | ends at the current minute, UTC |
 | `MAX_LINES` | `--max-lines` | `50000` | half reserved for journal lines |
 | `PROMPT_BUDGET` | `--prompt-budget` | `60000` | bytes of digest sent to Claude |
 | `CLAUDE_BIN` | `--claude-bin` | `claude` | |

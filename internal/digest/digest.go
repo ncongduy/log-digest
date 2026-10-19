@@ -340,7 +340,7 @@ func (g *Group) render() string {
 	return b.String()
 }
 
-// Window describes the time span, e.g. "2026-10-18 06:00 – 12:00 UTC (6h)".
+// Window describes the time span, e.g. "2026-10-18 12:20 – 12:30 UTC (10m)".
 func (d *Digest) Window() string {
 	s, e := d.Start.UTC(), d.End.UTC()
 	endFmt := "15:04"
@@ -349,8 +349,11 @@ func (d *Digest) Window() string {
 	}
 	dur := e.Sub(s)
 	ds := dur.String()
-	if dur%time.Hour == 0 {
+	switch {
+	case dur%time.Hour == 0:
 		ds = fmt.Sprintf("%dh", int(dur.Hours()))
+	case dur%time.Minute == 0:
+		ds = strings.TrimSuffix(ds, "0s")
 	}
 	return fmt.Sprintf("%s – %s UTC (%s)", s.Format("2006-01-02 15:04"), e.Format(endFmt), ds)
 }

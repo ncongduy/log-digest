@@ -198,3 +198,20 @@ func TestTop(t *testing.T) {
 		t.Errorf("Top(10) = %d groups", got)
 	}
 }
+
+func TestWindow(t *testing.T) {
+	for _, c := range []struct {
+		start, end time.Time
+		want       string
+	}{
+		{start, end, "2026-10-18 06:00 – 12:00 UTC (6h)"},
+		{t0.Add(14 * time.Minute), t0.Add(24 * time.Minute), "2026-10-18 06:14 – 06:24 UTC (10m)"},
+		{t0.Add(-90 * time.Minute), t0, "2026-10-18 04:30 – 06:00 UTC (1h30m)"},
+		{t0.Add(-7 * time.Hour), t0, "2026-10-17 23:00 – 2026-10-18 06:00 UTC (7h)"},
+	} {
+		d := Build(nil, c.start, c.end)
+		if got := d.Window(); got != c.want {
+			t.Errorf("Window() = %q, want %q", got, c.want)
+		}
+	}
+}
