@@ -18,6 +18,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	// TZ resolves without /usr/share/zoneinfo in the image.
+	_ "time/tzdata"
 
 	"github.com/ncongduy/log-digest/internal/claude"
 	"github.com/ncongduy/log-digest/internal/digest"
@@ -51,6 +53,8 @@ type config struct {
 	claudeTimeout time.Duration
 	dryRun        bool
 	input         string
+	tz            string
+	loc           *time.Location
 	// From the environment only: a flag would show in the process list.
 	webhook string
 	context string
@@ -107,6 +111,7 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, now time.
 	d := digest.Build(entries, start, end)
 	d.Truncated = truncated
 	d.Redacted = san.Total()
+	d.Loc = cfg.loc
 	prompt := d.Prompt(cfg.budget)
 	log.Info("digest built", "window", d.Window(), "lines", d.Lines, "sources", len(d.Sources),
 		"groups", len(d.Groups), "redacted", d.Redacted, "truncated", truncated, "prompt_bytes", len(prompt))
@@ -160,6 +165,7 @@ func parse(args []string, stderr io.Writer) (*config, error) {
 	fs.DurationVar(&cfg.claudeTimeout, "claude-timeout", envDuration("CLAUDE_TIMEOUT", 20*time.Minute), "longest wait for Claude (CLAUDE_TIMEOUT)")
 	fs.BoolVar(&cfg.dryRun, "dry-run", false, "print the prompt; call neither Claude nor Slack")
 	fs.StringVar(&cfg.input, "input", "", "read a saved Loki query_range response instead of querying Loki")
+	fs.StringVar(&cfg.tz, "tz", env("TZ", "UTC"), "time zone of the report's times, an IANA name such as Europe/Helsinki (TZ)")
 	showVersion := fs.Bool("version", false, "print the version")
 	if err := fs.Parse(args); err != nil {
 		return nil, err
@@ -169,6 +175,11 @@ func parse(args []string, stderr io.Writer) (*config, error) {
 	}
 	cfg.webhook = os.Getenv("SLACK_WEBHOOK_URL")
 	cfg.context = strings.TrimSpace(os.Getenv("DIGEST_CONTEXT"))
+	loc, err := time.LoadLocation(strings.TrimPrefix(cfg.tz, ":"))
+	if err != nil {
+		return nil, fmt.Errorf("time zone: %w", err)
+	}
+	cfg.loc = loc
 	switch {
 	case cfg.window <= 0:
 		return nil, errors.New("window must be positive")

@@ -22,6 +22,12 @@ const fixture = "../../testdata/loki.json"
 // --window 6h.
 var now = time.Date(2026, 10, 18, 12, 30, 0, 0, time.UTC)
 
+// The report's times follow TZ: the tests below expect UTC unless they set it.
+func TestMain(m *testing.M) {
+	os.Unsetenv("TZ")
+	os.Exit(m.Run())
+}
+
 func fixtureSecrets(t *testing.T) []string {
 	t.Helper()
 	b, err := os.ReadFile("../../testdata/secrets.txt")
@@ -217,6 +223,35 @@ func TestRunWindowEndsAtTheMinute(t *testing.T) {
 	}
 	if len(*posts) != 1 || !strings.Contains((*posts)[0], "2026-10-18 12:20 – 12:30 UTC (10m)") {
 		t.Errorf("posts = %q", *posts)
+	}
+}
+
+func TestRunTimeZone(t *testing.T) {
+	srv, posts := fakeSlack(t)
+	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, `{"status":"success","data":{"resultType":"streams","result":[]}}`)
+	}))
+	defer loki.Close()
+	t.Setenv("SLACK_WEBHOOK_URL", srv.URL)
+	t.Setenv("TZ", "Europe/Helsinki")
+
+	at := time.Date(2026, 10, 18, 12, 30, 45, 0, time.UTC)
+	var stdout, stderr bytes.Buffer
+	if code := run(context.Background(), []string{"--loki-url", loki.URL}, &stdout, &stderr, at); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if len(*posts) != 1 || !strings.Contains((*posts)[0], "2026-10-18 15:20 – 15:30 EEST (10m)") {
+		t.Errorf("posts = %q", *posts)
+	}
+}
+
+func TestRunBadTimeZone(t *testing.T) {
+	t.Setenv("TZ", "Mars/Olympus_Mons")
+	var stdout, stderr bytes.Buffer
+	// --dry-run: should the zone be accepted after all, neither Claude nor
+	// Slack is called.
+	if code := run(context.Background(), []string{"--dry-run", "--input", fixture}, &stdout, &stderr, now); code != 2 {
+		t.Errorf("exit %d, want 2: %s", code, stderr.String())
 	}
 }
 

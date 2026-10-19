@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	_ "time/tzdata"
 )
 
 var (
@@ -212,6 +213,49 @@ func TestWindow(t *testing.T) {
 		d := Build(nil, c.start, c.end)
 		if got := d.Window(); got != c.want {
 			t.Errorf("Window() = %q, want %q", got, c.want)
+		}
+	}
+}
+
+func TestWindowInLocation(t *testing.T) {
+	helsinki, err := time.LoadLocation("Europe/Helsinki")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Helsinki falls back from EEST to EET at 01:00 UTC on 2026-10-25.
+	fallBack := time.Date(2026, 10, 25, 1, 0, 0, 0, time.UTC)
+	for _, c := range []struct {
+		start, end time.Time
+		want       string
+	}{
+		{t0.Add(14 * time.Minute), t0.Add(24 * time.Minute), "2026-10-18 09:14 – 09:24 EEST (10m)"},
+		{fallBack.Add(-5 * time.Minute), fallBack.Add(5 * time.Minute), "2026-10-25 03:55 EEST – 03:05 EET (10m)"},
+	} {
+		d := Build(nil, c.start, c.end)
+		d.Loc = helsinki
+		if got := d.Window(); got != c.want {
+			t.Errorf("Window() = %q, want %q", got, c.want)
+		}
+	}
+}
+
+func TestPromptInLocation(t *testing.T) {
+	helsinki, err := time.LoadLocation("Europe/Helsinki")
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := Build([]Entry{
+		pod("monitoring", "loki", "loki-0", "error", "flush failed: disk full", time.Minute),
+		pod("monitoring", "loki", "loki-0", "error", "flush failed: disk full", 2*time.Hour),
+	}, start, end)
+	d.Loc = helsinki
+	p := d.Prompt(60_000)
+	for _, want := range []string{
+		"Window: 2026-10-18 09:00 – 15:00 EEST (6h)",
+		"pod monitoring/loki ×2 (09:01:00–11:00:00 EEST",
+	} {
+		if !strings.Contains(p, want) {
+			t.Errorf("prompt lacks %q:\n%s", want, p)
 		}
 	}
 }

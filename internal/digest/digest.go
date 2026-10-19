@@ -59,6 +59,16 @@ type Digest struct {
 	Redacted int
 	Groups   []*Group
 	Sources  []*SourceTotal
+	// Loc: the zone the window and the groups' times are shown in. UTC when
+	// nil.
+	Loc *time.Location
+}
+
+func (d *Digest) loc() *time.Location {
+	if d.Loc == nil {
+		return time.UTC
+	}
+	return d.Loc
 }
 
 var levelRank = map[string]int{"critical": 0, "error": 1, "warn": 2}
@@ -296,7 +306,7 @@ func (d *Digest) Prompt(budget int) string {
 		if shown[g.Source] >= MaxGroupsPerSource {
 			continue
 		}
-		block := g.render()
+		block := g.render(d.loc())
 		r := left[g.Source]
 		after := restLen - len(restLine(g.Source, r))
 		r.groups--
@@ -326,10 +336,14 @@ func (d *Digest) Prompt(budget int) string {
 	return out
 }
 
-func (g *Group) render() string {
+func (g *Group) render(loc *time.Location) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "\n### [%s] %s ×%d (%s–%s UTC", g.Level, g.Source, g.Count,
-		g.First.UTC().Format("15:04:05"), g.Last.UTC().Format("15:04:05"))
+	first, last := g.First.In(loc), g.Last.In(loc)
+	span := first.Format("15:04:05") + "–" + last.Format("15:04:05 MST")
+	if first.Format("MST") != last.Format("MST") {
+		span = first.Format("15:04:05 MST") + "–" + last.Format("15:04:05 MST")
+	}
+	fmt.Fprintf(&b, "\n### [%s] %s ×%d (%s", g.Level, g.Source, g.Count, span)
 	if len(g.Pods) > 0 {
 		fmt.Fprintf(&b, ", pods: %s", strings.Join(g.Pods, ", "))
 	}
@@ -340,9 +354,10 @@ func (g *Group) render() string {
 	return b.String()
 }
 
-// Window describes the time span, e.g. "2026-10-18 12:20 – 12:30 UTC (10m)".
+// Window describes the time span in Loc, e.g. "2026-10-18 12:20 – 12:30 UTC (10m)"
+// or "2026-10-18 15:20 – 15:30 EEST (10m)".
 func (d *Digest) Window() string {
-	s, e := d.Start.UTC(), d.End.UTC()
+	s, e := d.Start.In(d.loc()), d.End.In(d.loc())
 	endFmt := "15:04"
 	if s.YearDay() != e.YearDay() || s.Year() != e.Year() {
 		endFmt = "2006-01-02 15:04"
@@ -355,7 +370,11 @@ func (d *Digest) Window() string {
 	case dur%time.Minute == 0:
 		ds = strings.TrimSuffix(ds, "0s")
 	}
-	return fmt.Sprintf("%s – %s UTC (%s)", s.Format("2006-01-02 15:04"), e.Format(endFmt), ds)
+	// Across a daylight saving change the two ends differ: name both zones.
+	if zs, ze := s.Format("MST"), e.Format("MST"); zs != ze {
+		return fmt.Sprintf("%s %s – %s %s (%s)", s.Format("2006-01-02 15:04"), zs, e.Format(endFmt), ze, ds)
+	}
+	return fmt.Sprintf("%s – %s %s (%s)", s.Format("2006-01-02 15:04"), e.Format(endFmt), e.Format("MST"), ds)
 }
 
 func levelList(c map[string]int) string {

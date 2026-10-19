@@ -30,12 +30,13 @@ The Slack webhook is removed from `claude`'s environment.
 | Env | Flag | Default | |
 |---|---|---|---|
 | `LOKI_URL` | `--loki-url` | `http://loki.monitoring.svc.cluster.local:3100` | |
-| `WINDOW` | `--window` | `10m` | ends at the current minute, UTC |
+| `WINDOW` | `--window` | `10m` | ends at the current minute |
 | `MAX_LINES` | `--max-lines` | `50000` | half reserved for journal lines |
 | `PROMPT_BUDGET` | `--prompt-budget` | `60000` | bytes of digest sent to Claude |
 | `CLAUDE_BIN` | `--claude-bin` | `claude` | |
 | `CLAUDE_MODEL` | `--model` | `sonnet` | |
 | `CLAUDE_TIMEOUT` | `--claude-timeout` | `20m` | |
+| `TZ` | `--tz` | `UTC` | time zone of the report's times, an IANA name such as `Europe/Helsinki`; the zone data is built in |
 | `DIGEST_CONTEXT` | — | — | facts about the cluster, appended to the system prompt |
 | `SLACK_WEBHOOK_URL` | — | — | required unless `--dry-run` |
 | `CLAUDE_CODE_OAUTH_TOKEN` | — | — | read by `claude` itself |
